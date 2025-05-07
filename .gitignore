@@ -1,0 +1,33 @@
+# ─── Python virtual‑envs ───────────────────────────────────────────────
+.venv/
+env/
+# Poetry caches its venvs outside the project, but include this for safety
+*.venv
+
+# ─── Bytecode / compiled files ────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+
+# ─── Test & coverage artifacts ────────────────────────────────────────
+/.pytest_cache/
+coverage.xml
+htmlcov/
+
+# ─── Editor / OS cruft ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ─── Build / dist output (if you ever run `python -m build`) ──────────
+dist/
+build/
+*.whl
+
+# ─── Lock & log files generated at run‑time (optional) ────────────────
+uv.lock
+*.log

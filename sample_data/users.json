@@ -1,60 +1,42 @@
 [
-  {
-    "id": 1,
-    "name": "John Doe",
-    "email": "john@example.com",
-    "age": 30,
-    "address": {
-      "street": "123 Main St",
-      "city": "Boston",
-      "state": "MA",
-      "zip": "02118"
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "age": 30,
+      "address": {
+        "street": "123 Main St",
+        "city": "Boston",
+        "state": "MA",
+        "zip": "02118"
+      },
+      "preferences": {
+        "newsletter": true,
+        "notifications": {
+          "email": true,
+          "sms": false
+        }
+      },
+      "hobbies": ["reading", "swimming", "coding"],
+      "orders": [
+        {"id": 101, "total": 50.00, "date": "2024-01-15"},
+        {"id": 102, "total": 75.50, "date": "2024-02-01"}
+      ]
     },
-    "preferences": {
-      "newsletter": true,
-      "notifications": {
-        "email": true,
-        "sms": false
-      }
-    },
-    "hobbies": ["reading", "swimming", "coding"],
-    "orders": [
-      {"id": 101, "total": 50.00, "date": "2024-01-15"},
-      {"id": 102, "total": 75.50, "date": "2024-02-01"}
-    ]
-  },
-  {
-    "id": 2,
-    "name": "Jane Smith",
-    "email": "jane@example.com",
-    "age": 25,
-    "address": {
-      "street": "456 Oak Ave",
-      "city": "New York",
-      "state": "NY",
-      "zip": null
-    },
-    "preferences": {
-      "newsletter": false,
-      "notifications": {
-        "email": false,
-        "sms": true
-      }
-    },
-    "hobbies": ["painting"],
-    "orders": []
-  },
-  {
-    "id": 3,
-    "name": "Bob Johnson",
-    "email": "bob@example.com",
-    "age": 45,
-    "preferences": {
-      "newsletter": true
-    },
-    "hobbies": [],
-    "orders": [
-      {"id": 103, "total": 25.00, "date": "2024-01-20"}
-    ]
-  }
-]
+    {
+      "id": 2,
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "age": 25,
+      "address": {
+        "street": "456 Oak Ave",
+        "city": "New York",
+        "state": "NY"
+      },
+      "preferences": {
+        "newsletter": false
+      },
+      "hobbies": ["painting"],
+      "orders": []
+    }
+  ]

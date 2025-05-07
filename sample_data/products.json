@@ -1,0 +1,61 @@
+[
+    {
+      "id": "prod-001",
+      "name": "Wireless Headphones",
+      "category": "Electronics",
+      "price": 79.99,
+      "specs": {
+        "battery_life": "20 hours",
+        "connectivity": ["Bluetooth 5.0", "3.5mm jack"],
+        "weight": "250g"
+      },
+      "variants": [
+        {
+          "color": "Black",
+          "sku": "WH-BLK-001",
+          "stock": 50
+        },
+        {
+          "color": "White",
+          "sku": "WH-WHT-001",
+          "stock": 30
+        }
+      ],
+      "reviews": [
+        {
+          "user": "user123",
+          "rating": 5,
+          "comment": "Great sound quality!"
+        },
+        {
+          "user": "user456",
+          "rating": 4,
+          "comment": "Comfortable to wear"
+        }
+      ]
+    },
+    {
+      "id": "prod-002",
+      "name": "Smart Watch",
+      "category": "Electronics",
+      "price": 199.99,
+      "specs": {
+        "display": "1.4 inch AMOLED",
+        "battery_life": "7 days",
+        "water_resistant": true
+      },
+      "variants": [
+        {
+          "size": "42mm",
+          "sku": "SW-42-001",
+          "stock": 25
+        },
+        {
+          "size": "46mm",
+          "sku": "SW-46-001",
+          "stock": 15
+        }
+      ],
+      "reviews": []
+    }
+  ]

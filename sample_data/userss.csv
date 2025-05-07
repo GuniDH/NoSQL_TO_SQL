@@ -1,3 +1,0 @@
-address/city,address/state,address/street,address/zip,age,email,hobbies/0,hobbies/1,hobbies/2,id,name,orders/0/date,orders/0/id,orders/0/total,orders/1/date,orders/1/id,orders/1/total,preferences/newsletter,preferences/notifications/email,preferences/notifications/sms
-Boston,MA,123 Main St,02118,30,john@example.com,reading,swimming,coding,1,John Doe,2024-01-15,101,50.0,2024-02-01,102,75.5,True,True,False
-New York,NY,456 Oak Ave,,25,jane@example.com,painting,,,2,Jane Smith,,,,,,,False,,

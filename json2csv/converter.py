@@ -1,277 +1,148 @@
-"""
-Core module for converting JSON data to CSV format.
-Supports both flattened (single CSV) and normalized (multiple CSV) approaches.
-"""
-import csv
 import json
-import os
+import csv
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple, Union
+from collections import OrderedDict
+from pluralizer import Pluralizer
 
-from json2csv.utils import secure_paths
+# Initialize pluralizer once
+pluralizer = Pluralizer()
 
+def flatten_to_csv(json_path: str, csv_path: str, verbose: bool=False):
+    data = json.loads(Path(json_path).read_text())
+    if not isinstance(data, list):
+        raise ValueError("Top-level JSON must be an array of objects.")
 
-@secure_paths
-def read_json(file_path: str) -> List[Dict[str, Any]]:
-    """
-    Read JSON data from file.
-    
-    Args:
-        file_path: Path to the JSON file
-        
-    Returns:
-        List of dictionaries representing the JSON data
-        
-    Raises:
-        FileNotFoundError: If the file doesn't exist
-        json.JSONDecodeError: If the file contains invalid JSON
-    """
-    with open(file_path, 'r', encoding='utf-8') as file:
-        data = json.load(file)
-    
-    # Ensure data is a list of dictionaries
-    if isinstance(data, dict):
-        data = [data]
-    elif not isinstance(data, list):
-        raise ValueError("JSON data must be either a dictionary or a list of dictionaries")
-    
-    return data
+    rows = []
+    columns = []  # preserve insertion order of columns
 
-
-def flatten_json(obj: Dict[str, Any], separator: str = "/") -> Dict[str, Any]:
-    """
-    Flatten a nested JSON object into a single-level dictionary.
-    
-    Args:
-        obj: The nested JSON object
-        separator: Separator for nested keys
-        
-    Returns:
-        A flattened dictionary with compound keys
-    """
-    result = {}
-    
-    def _flatten(item, prefix=''):
-        if isinstance(item, dict):
-            for key, value in item.items():
-                _flatten(value, f"{prefix}{key}{separator}" if prefix else f"{key}{separator}")
-        elif isinstance(item, list):
-            for i, value in enumerate(item):
-                if isinstance(value, (dict, list)):
-                    _flatten(value, f"{prefix}{i}{separator}")
+    for rec in data:
+        row = OrderedDict()
+        def _flatten(obj, prefix=""):
+            for k, v in obj.items():
+                key = f"{prefix}{k}" if not prefix else f"{prefix}/{k}"
+                if isinstance(v, dict):
+                    _flatten(v, key)
+                elif isinstance(v, list):
+                    for i, item in enumerate(v):
+                        subkey = f"{key}/{i}"
+                        if isinstance(item, dict):
+                            _flatten(item, subkey)
+                        else:
+                            # primitives: preserve original type
+                            row[subkey] = item
                 else:
-                    result[f"{prefix}{i}"] = value
+                    # scalars: preserve original type (bool,int,str,etc.)
+                    row[key] = v
+        _flatten(rec)
+
+        for col in row.keys():
+            if col not in columns:
+                columns.append(col)
+        rows.append(row)
+
+    # ensure output directory exists
+    Path(csv_path).parent.mkdir(parents=True, exist_ok=True)
+    # write CSV
+    with open(csv_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        writer.writeheader()
+        for r in rows:
+            writer.writerow(r)
+    if verbose:
+        print(f"[flatten] wrote {len(rows)} rows with {len(columns)} columns")
+
+        
+def normalize_to_csv(json_path: str, out_dir: str, verbose: bool=False):
+    data = json.loads(Path(json_path).read_text())
+    if not isinstance(data, list):
+        raise ValueError("Top-level JSON must be an array of objects.")
+
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    tables = {}   # table_name -> list of OrderedDict rows
+    counters = {} # table_name -> auto-increment counter
+
+    def _new_id(table: str) -> int:
+        counters.setdefault(table, 0)
+        counters[table] += 1
+        return counters[table]
+
+    def _process(obj: dict, table: str, parent_ref=None):
+        tables.setdefault(table, [])
+        # determine PK field name
+        if table == 'root':
+            pk_field = 'root_id'
+            pk_val = _new_id('root')
         else:
-            # Remove the trailing separator
-            if prefix:
-                prefix = prefix[:-1]
-            result[prefix] = item
-    
-    _flatten(obj)
-    return result
-
-
-@secure_paths
-def convert_to_flattened_csv(json_data: List[Dict[str, Any]], output_path: str, separator: str = "/") -> None:
-    """
-    Convert JSON data to a single flattened CSV file.
-    
-    Args:
-        json_data: List of JSON objects
-        output_path: Path to the output CSV file
-        separator: Separator for nested keys
-        
-    Returns:
-        None
-    """
-    # Flatten each JSON object
-    flattened_data = [flatten_json(item, separator) for item in json_data]
-    
-    # Get all unique keys to create headers
-    all_keys = set()
-    for item in flattened_data:
-        all_keys.update(item.keys())
-    
-    # Sort keys for consistent output
-    headers = sorted(all_keys)
-    
-    # Ensure the output directory exists
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-    
-    # Write to CSV
-    with open(output_path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=headers)
-        writer.writeheader()
-        for item in flattened_data:
-            writer.writerow(item)
-
-
-def extract_entity_structure(
-    json_data: List[Dict[str, Any]]
-) -> Dict[str, Dict[str, List[str]]]:
-    """
-    Analyze JSON data to extract the entity structure for normalization.
-    
-    Args:
-        json_data: List of JSON objects
-        
-    Returns:
-        Dictionary of entity definitions with their fields and relationships
-    """
-    entities = {"root": {"fields": set(), "relations": {}}}
-    
-    # First pass: identify entities and their fields
-    for item in json_data:
-        for key, value in item.items():
-            if isinstance(value, dict):
-                # This is a nested object, create a new entity
-                if key not in entities:
-                    entities[key] = {"fields": set(), "relations": {}}
-                for sub_key, sub_value in value.items():
-                    if not isinstance(sub_value, (dict, list)):
-                        entities[key]["fields"].add(sub_key)
-            elif isinstance(value, list) and value and isinstance(value[0], dict):
-                # This is a list of objects, create a new entity
-                if key not in entities:
-                    entities[key] = {"fields": set(), "relations": {}}
-                # Add fields from the first item as a sample
-                for sub_key, sub_value in value[0].items():
-                    if not isinstance(sub_value, (dict, list)):
-                        entities[key]["fields"].add(sub_key)
-                # Mark this as a one-to-many relationship
-                entities["root"]["relations"][key] = "one_to_many"
+            pk_field = f"{pluralizer.singular(table)}_id"
+            # use JSON 'id' if available, else generate
+            if 'id' in obj and not isinstance(obj['id'], (dict, list)):
+                pk_val = obj['id']
             else:
-                # Simple field
-                entities["root"]["fields"].add(key)
-    
-    # Convert sets to sorted lists for consistent output
-    for entity in entities.values():
-        entity["fields"] = sorted(entity["fields"])
-    
-    return entities
+                pk_val = _new_id(table)
+        # start row
+        row = OrderedDict([(pk_field, pk_val)])
+        # attach FK to parent
+        if parent_ref:
+            _, fk_field, parent_id = parent_ref
+            row[fk_field] = parent_id
 
+        # separate scalars and nested
+        nested = []
+        for key, val in obj.items():
+            if key == 'id':
+                continue
+            if isinstance(val, (dict, list)):
+                nested.append((key, val))
+            else:
+                row[key] = val
+        tables[table].append(row)
 
-@secure_paths
-def convert_to_normalized_csvs(json_data: List[Dict[str, Any]], output_dir: str) -> None:
-    """
-    Convert JSON data to multiple normalized CSV files.
-    
-    Args:
-        json_data: List of JSON objects
-        output_dir: Directory for the output CSV files
-        
-    Returns:
-        None
-    """
-    # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Extract entity structure
-    entities = extract_entity_structure(json_data)
-    
-    # Create root table
-    root_data = []
-    for i, item in enumerate(json_data):
-        row = {"id": i + 1}  # Generate a primary key
-        for key, value in item.items():
-            if not isinstance(value, (dict, list)):
-                row[key] = value
-        root_data.append(row)
-    
-    # Write root table
-    root_path = os.path.join(output_dir, "root.csv")
-    write_csv(root_path, root_data)
-    
-    # Process nested entities
-    for entity_name, entity_def in entities.items():
-        if entity_name == "root":
-            continue
-        
-        entity_data = []
-        for i, item in enumerate(json_data):
-            if entity_name in item:
-                value = item[entity_name]
-                if isinstance(value, dict):
-                    # One-to-one relationship
-                    row = {"id": len(entity_data) + 1, "root_id": i + 1}
-                    for field in entity_def["fields"]:
-                        if field in value:
-                            row[field] = value[field]
-                    entity_data.append(row)
-                elif isinstance(value, list) and value and isinstance(value[0], dict):
-                    # One-to-many relationship
-                    for j, sub_item in enumerate(value):
-                        row = {"id": len(entity_data) + 1, "root_id": i + 1}
-                        for field in entity_def["fields"]:
-                            if field in sub_item:
-                                row[field] = sub_item[field]
-                        entity_data.append(row)
-        
-        # Write entity table
-        entity_path = os.path.join(output_dir, f"{entity_name}.csv")
-        write_csv(entity_path, entity_data)
+        # recurse nested
+        for key, val in nested:
+            child_table = pluralizer.plural(key)
+            fk_field = 'root_id' if table == 'root' else pk_field
+            if isinstance(val, dict):
+                if val:
+                    _process(val, child_table, (table, fk_field, pk_val))
+            else:
+                # array of primitives
+                if all(not isinstance(i, (dict, list)) for i in val):
+                    for item in val:
+                        child_pk = f"{pluralizer.singular(child_table)}_id"
+                        # if JSON object has 'id', use it
+                        if isinstance(item, dict) and 'id' in item:
+                            child_val = item['id']
+                        else:
+                            child_val = _new_id(child_table)
+                        child_row = OrderedDict([
+                            (child_pk, child_val),
+                            (fk_field, pk_val),
+                            (pluralizer.singular(child_table), item if not isinstance(item, dict) else item.get(pluralizer.singular(child_table)))
+                        ])
+                        tables.setdefault(child_table, []).append(child_row)
+                else:
+                    for item in val:
+                        _process(item, child_table, (table, fk_field, pk_val))
 
+    # process records
+    for record in data:
+        _process(record, 'root', None)
 
-@secure_paths
-def write_csv(file_path: str, data: List[Dict[str, Any]]) -> None:
-    """
-    Write data to a CSV file.
-    
-    Args:
-        file_path: Path to the output CSV file
-        data: List of dictionaries to write
-        
-    Returns:
-        None
-    """
-    if not data:
-        return
-    
-    headers = set()
-    for item in data:
-        headers.update(item.keys())
-    
-    with open(file_path, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=sorted(headers))
-        writer.writeheader()
-        for item in data:
-            writer.writerow(item)
-
-
-def convert_json_to_csv(
-    input_path: str,
-    output_path: str,
-    mode: str = "flattened",
-    separator: str = "/"
-) -> None:
-    """
-    Main function to convert JSON to CSV.
-    
-    Args:
-        input_path: Path to the input JSON file
-        output_path: Path to the output CSV file or directory
-        mode: Conversion mode ("flattened" or "normalized")
-        separator: Separator for nested keys (only used in flattened mode)
-        
-    Returns:
-        None
-        
-    Raises:
-        ValueError: If mode is invalid
-    """
-    # Read JSON data
-    json_data = read_json(input_path)
-    
-    # Convert based on selected mode
-    if mode == "flattened":
-        convert_to_flattened_csv(json_data, output_path, separator)
-    elif mode == "normalized":
-        # For normalized mode, output_path should be a directory
-        output_dir = output_path
-        if Path(output_dir).suffix:  # If output_path has an extension
-            output_dir = str(Path(output_path).parent / Path(output_path).stem)
-        convert_to_normalized_csvs(json_data, output_dir)
-    else:
-        raise ValueError(f"Invalid mode: {mode}. Choose either 'flattened' or 'normalized'")
+    # write CSVs
+    for tbl, rows in tables.items():
+        file_path = out_path / f"{tbl}.csv"
+        columns = []
+        for r in rows:
+            for c in r.keys():
+                if c not in columns:
+                    columns.append(c)
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(file_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=columns)
+            writer.writeheader()
+            for r in rows:
+                writer.writerow(r)
+        if verbose:
+            print(f"[normalize] wrote {len(rows)} rows to {tbl}.csv")

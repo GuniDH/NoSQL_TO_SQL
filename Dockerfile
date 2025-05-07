@@ -1,20 +1,22 @@
-FROM python:3.10-slim
+# Use a Python slim image
+FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-# Copy the project files
-COPY pyproject.toml poetry.lock* /app/
-COPY json2csv/ /app/json2csv/
-COPY sample_data/ /app/sample_data/
+# Copy requirements and install them
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Poetry
-RUN pip install --no-cache-dir poetry
+# Copy the entire source code
+COPY . .
 
-# Configure Poetry to not create a virtual environment in the container
-RUN poetry config virtualenvs.create false
+# Create a non-root user
+RUN useradd -m appuser
+USER appuser
 
-# Install dependencies
-RUN poetry install --no-dev
+# Ensure Python can find local modules
+ENV PYTHONPATH=/app
 
-# Set the entrypoint to the json2csv command
+# Entry point using your poetry-style script path
 ENTRYPOINT ["python", "-m", "json2csv.cli"]

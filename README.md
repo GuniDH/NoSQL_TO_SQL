@@ -1,208 +1,225 @@
-# JSON to CSV Converter - Guni Deyo Haness
+# JSON → CSV Converter - Guni Deyo Haness
 
-A Python CLI application that converts JSON data files (mimicking MongoDB collections) to CSV format (SQL-like tabular data).
+A fully‑featured Python CLI for migrating **NoSQL‑style JSON documents** to **SQL‑style CSV files.** 
+Built with **Click** (for rich interactive prompts) and **pluralizer** (for consistent singular/plural naming).
 
-## Overview
+It supports the **flattened** approach - the default option from the project instructions that require a single csv output file.
+But it also supports a bonus option - fully **normalized** export for relational databases with multiple csv output files which is optimal.
 
-This tool addresses the challenge of converting hierarchical NoSQL data structures to flat SQL-like tables. It offers two conversion approaches:
 
-1. **Flattened Mode** (default): Converts the JSON to a single CSV file with nested structures flattened using a separator.
-2. **Normalized Mode**: Converts the JSON to multiple CSV files representing a normalized relational database schema with proper relationships.
+| Mode           | Output             | How nested data are handled                                                                                                                                              |
+| -------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Flattened**  | Single CSV file    | Keys are joined with slashes (`address/street`). Arrays are expanded as indexed columns (`tags/0`, `tags/1`, …).                                                         |
+| **Normalized** | Multiple CSV files | `root.csv` (I could add a part to predict the name of the main entity with heuristics or NLP) plus one table per nested object/array. Each table has a surrogate `{singular}_id` primary key and a foreign‑key column back to another table - let's explain:
+Because we can't suppose anything about relationships between entities in the database, I chose to do nested FKs (indirect), therefore the FKs arent just to root.csv, they point to the immediate parent.
 
-## Features
+### Why we use nested (indirect) foreign keys in the bonus normalized approach:
 
-- **Interactive CLI**: Easy-to-use command-line interface with guided prompts
-- **Handles Nested JSON Structures**: Properly handles nested objects and arrays
-- **Two Conversion Approaches**: Choose between flattened (single CSV) or normalized (multiple CSVs)
-- **Smart Schema Detection**: Analyzes JSON structure to create consistent schemas
-- **Robust Error Handling**: Comprehensive validation and detailed error messages
-- **Docker Support**: Containerized deployment ready
+| Aspect | **Nested FK** (child → immediate parent) | **Direct FK** (child → root) |
+|--------|------------------------------------------|------------------------------|
+| **Normal forms** | Fully satisfies 2NF/3NF because every non‑key column depends only on its table’s PK. | Skips a logical level; still valid but can introduce partial‑dependency concerns. |
+| **Future‑proofing** | If a single object later becomes an array, you just add rows—no schema migration. | Requires adding a new table and rewriting FKs. |
+| **Query flexibility** | Can traverse the hierarchy or flatten with joins as needed. | Simpler for root‑level reports only. |
+| **Join cost** | One extra indexed join (typically a few ms). | Slightly faster—one join fewer—but negligible with indexes. |
 
-## Installation
+Nested FKs mirror the JSON structure, preserve normal‑form integrity, and adapt to future changes, while the extra join overhead is minimal.
 
-### Option 1: Using Poetry (Recommended)
+---
+
+## 1 · Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/json2csv.git
+# clone and enter the repo
+git clone https://github.com/your‑org/json2csv.git
 cd json2csv
+```
 
-# Install with Poetry
+### 1.1 Poetry (recommended)
+
+```bash
+# install dependencies in an isolated virtual‑env
 poetry install
 
-# Activate the virtual environment
-poetry shell
-
-# Run the tool
-json2csv
+# optional: activate that environment in a specific path (Poetry normally stores venvs in a cache)
+poetry env activate $(poetry env info --path)
 ```
 
-### Option 2: Using pip with Virtual Environment
+### 1.2 pip + venv
+
+| OS                     | Commands                                                                |
+| ---------------------- | ----------------------------------------------------------------------- |
+| **macOS/Linux**        | `python3 -m venv .venv && source .venv/bin/activate && pip install .`   |
+| **Windows PowerShell** | `python -m venv .venv ; .\.venv\Scripts\Activate.ps1 ; pip install .`   |
+| **Windows CMD**        | `python -m venv .venv && .\.venv\Scripts\activate.bat && pip install .` |
+
+### 1.3 uv (fast installer)
+
+| OS                     | Commands                                                                |
+| ---------------------- | ----------------------------------------------------------------------- |
+| **macOS/Linux**        | `python3 -m venv .venv && source .venv/bin/activate`   |
+| **Windows PowerShell** | `python -m venv .venv ; .\.venv\Scripts\Activate.ps1`   |
+| **Windows CMD**        | `python -m venv .venv && .\.venv\Scripts\activate.bat` |
+
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/json2csv.git
-cd json2csv
-
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install the package
-pip install -e .
+ pip install uv                                       # install uv itself
+ uv pip install --requirements requirements.txt       # install runtime + pytest
+ uv pip install --editable .                          # install json2csv package
 ```
 
-### Option 3: Using uv
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/json2csv.git
-cd json2csv
-
-# Create a virtual environment
-uv venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
-uv pip install -e .
-```
-
-## Usage
-
-### Interactive Mode
-
-The simplest way to use the tool is in fully interactive mode:
-
-```bash
-json2csv
-```
-
-The tool will guide you through the process with prompts:
-1. Explanation of conversion approaches (optional)
-2. Selection of conversion mode (flattened or normalized)
-3. Input JSON file path
-4. Output path (file for flattened mode, directory for normalized mode)
-5. Separator for nested keys (for flattened mode)
-
-### Command-line Arguments
-
-You can also specify options directly:
-
-```bash
-# Basic usage
-json2csv --input data.json --output result.csv
-
-# Specify mode and separator
-json2csv --input data.json --output result.csv --mode flattened --separator "/"
-
-# Normalized mode (output should be a directory)
-json2csv --input data.json --output output_dir --mode normalized
-
-# Enable verbose output
-json2csv --input data.json --output result.csv --verbose
-
-# Show version
-json2csv --version
-
-# Get help
-json2csv --help
-```
-
-## Docker Usage
-
-### Building the Docker Image
-
+## 1.4 docker
 ```bash
 docker build -t json2csv .
 ```
 
-### Running with Docker
+---
+
+## 2 · Running the CLI (you have --help, --verbose flags)
 
 ```bash
-# Run in interactive mode
-docker run -it --rm -v $(pwd):/app/data json2csv
-
-# Specify options
-docker run -it --rm -v $(pwd):/app/data json2csv --input /app/data/users.json --output /app/data/output.csv
+poetry run json2csv # poetry
+json2csv            # uv or pip (both venv)
+docker run --rm -it -v "${PWD}:/app" -w /app json2csv # docker
 ```
 
-## Development
+Interactive flow:
 
-### Setting Up Development Environment
+1. Choose **F**lattened (default) or **N**ormalized.
+2. Provide an **input JSON path** (validated, must exist).
+3. Provide an **output path**:
+
+   * Flattened: file path for a single CSV (parent directory auto‑created).
+   * Normalized: directory for multiple CSVs (created if missing).
+4. Decide whether to convert another file or exit.
+
+---
+
+## 3 · Testing (-q flag optional)
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/json2csv.git
-cd json2csv
-
-# Install with Poetry including dev dependencies
-poetry install
-
-# Activate the virtual environment
-poetry shell
+poetry run pytest      # poetry
+pytest                 # uv or pip (both venv)
+docker run --rm -it -v "${PWD}:/app" -w /app --entrypoint pytest json2csv -q # docker
 ```
 
-### Running Tests
+The test suite focuses on **data‑transformation logic**:
 
-```bash
-pytest
+* Deeply nested objects and arrays.
+* Surrogate primary‑key generation and foreign‑key integrity.
+* `utils.safe_path` sanitisation and directory creation to prevent directory traversal attack in case this app scales to an app server (i would personally develop it on fastapi).
+
+---
+
+## 4 · NoSQL → SQL Migration Challenges & Solutions
+
+| Challenge           | Why it’s hard                                   | Flattened approach                                                         | Normalized approach                                                                                                        |
+| ------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Schema Handling** | JSON is schema‑less; keys vary by document.     | Pre‑scan to union all key paths; absent keys → empty CSV cells.            | Tables are generated lazily. First record defines columns; later unseen keys are appended.                                 |
+| **Nested Data**     | SQL tables are flat.                            | Keys collapsed with `/`; arrays expanded as indexed columns because putting whole arrays in a csv table would make it not SQL usable.               | Each object/array becomes its own table. Child tables hold a foreign key to parent (`root_id` or parent `{singular}_id`).  |
+| **Data Types**      | Same key can hold different types.              | Values written as‑is (CSV stores as text). Downstream ETL casts as needed. | Same; CSV preserves text. SQL loaders can coerce.                                                                          |
+| **Array Fields**    | Variable length arrays don’t fit fixed columns. | Indexed columns (`tags/0` …).                                              | Arrays of primitives become `{plural}.csv` with `(id, root_id, value)`. Arrays of objects become tables with full columns. |
+
+### Extra Design Decisions
+
+* **Lockfiles**: Poetry generates `poetry.lock`; uv can create `uv.lock` for reproducible builds.
+* **Naming**: table names plural; primary keys `{singular}_id`; Pointing to parent with forign key (nested FKs).
+* **Click vs. Typer**: Typer is a wrapper on top of Click; using it would add an extra irrelaven layer which auto‑generates flags from function signatures but limits low‑level styling and prompt control. We need Click’s direct control for custom colors and looping, so sticking with Click keeps the stack lean.
+* **Path Security**: `utils.safe_path` strips whitespace, expands `~`, resolves `..`, validates existing paths, and auto‑creates output directories to prevent directory‑traversal exploits - VERY important if this project scales to a server application (i would personally develop it on fastapi).
+
+---
+
+## 5 · End‑to‑end example
+
+### 5.1  Input JSON
+
+```json
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "age": 30,
+    "address": {
+      "street": "123 Main St",
+      "city": "Boston",
+      "state": "MA",
+      "zip": "02118"
+    },
+    "preferences": {
+      "newsletter": true,
+      "notifications": { "email": true, "sms": false }
+    },
+    "hobbies": ["reading", "swimming", "coding"],
+    "orders": [
+      { "id": 101, "total": 50.00, "date": "2024‑01‑15" },
+      { "id": 102, "total": 75.50, "date": "2024‑02‑01" }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "age": 25,
+    "address": {
+      "street": "456 Oak Ave",
+      "city": "New York",
+      "state": "NY"
+    },
+    "preferences": { "newsletter": false },
+    "hobbies": ["painting"],
+    "orders": []
+  }
+]
+
 ```
+### 5.2  Flattened output (`flattened.csv`)
 
-## Design Decisions
+| id | name | email | age | address/street | address/city | address/state | address/zip | preferences/newsletter | preferences/notifications/email | preferences/notifications/sms | hobbies/0 | hobbies/1 | hobbies/2 | hobbies/3 | orders/0/id | orders/0/total | orders/0/date | orders/1/id | orders/1/total | orders/1/date |
+|----|------|-------|-----|----------------|--------------|---------------|-------------|-----------------------|---------------------------------|-------------------------------|-----------|-----------|-----------|-----------|-------------|----------------|---------------|-------------|----------------|---------------|
+| 1 | John Doe | john@example.com | 30 | 123 Main St | Boston | MA | 02118 | true | true | false | reading | swimming | coding |   | 101 | 50.00 | 2024‑01‑15 | 102 | 75.50 | 2024‑02‑01 |
+| 2 | Jane Smith | jane@example.com | 25 | 456 Oak Ave | New York | NY |   | false |   |   | painting |   |   |   |   |   |   |   |   |   |
 
-### Addressing NoSQL to SQL Migration Challenges
+---
 
-#### 1. Schema Handling
+### 5.3  Normalized output – six CSV tables
 
-The converter analyzes all JSON documents to create a consistent schema:
-- In flattened mode, all unique keys across documents form the CSV columns
-- In normalized mode, a relational schema is inferred from the JSON structure
-- Objects with the same structure are grouped into related tables
-- The tool automatically handles inconsistent structures by creating columns for all detected fields
+#### root.csv
+| user_id | name | email | age |
+|---------|------|-------|-----|
+| 1 | John Doe | john@example.com | 30 |
+| 2 | Jane Smith | jane@example.com | 25 |
 
-#### 2. Nested Data
+#### addresses.csv
+| address_id | user_id | street | city | state | zip |
+|------------|---------|--------|------|-------|-----|
+| 1 | 1 | 123 Main St | Boston | MA | 02118 |
+| 2 | 2 | 456 Oak Ave | New York | NY | *(null)* |
 
-Two approaches are offered for handling nested data:
-- **Flattened Mode**: Uses path notation with a separator (e.g., `address/city`) to represent nested fields in a single table
-- **Normalized Mode**: Creates separate tables for nested objects with foreign key relationships to maintain proper database normalization
+#### preferences.csv
+| preference_id | user_id | newsletter |
+|---------------|---------|------------|
+| 1 | 1 | true |
+| 2 | 2 | false |
 
-#### 3. Data Types
+#### notifications.csv
+| notification_id | preference_id | email | sms |
+|-----------------|---------------|-------|-----|
+| 1 | 1 | true | false |
 
-Type handling challenges are addressed by:
-- Preserving original data types when possible
-- Detecting type inconsistencies across documents
-- Converting all values to strings in CSV output
-- Handling `null` values by converting them to empty strings
-- Supporting mixed type fields by using string representation
+#### hobbies.csv
+| hobby_id | user_id | hobby |
+|----------|---------|-------|
+| 1 | 1 | reading |
+| 2 | 1 | swimming |
+| 3 | 1 | coding |
+| 4 | 2 | painting |
 
-#### 4. Array Fields
+#### orders.csv
+| order_id | user_id | total | date |
+|----------|---------|-------|------------|
+| 101 | 1 | 50.00 | 2024‑01‑15 |
+| 102 | 1 | 75.50 | 2024‑02‑01 |
 
-Array handling varies by mode and content type:
-- **Flattened Mode**:
-  - Arrays of primitives: Indexed with numeric suffixes (e.g., `hobbies/0`, `hobbies/1`)
-  - Arrays of objects: Each array item gets indexed keys (e.g., `orders/0/id`, `orders/1/total`)
-- **Normalized Mode**:
-  - Arrays of primitives: Stored in separate tables with foreign keys
-  - Arrays of objects: Represented as separate tables with one-to-many relationships
-
-### Implementation Decisions
-
-1. **Choice of Click over Typer**: Click was chosen for its robustness, extensive documentation, and wide adoption. It offers a balance of simplicity and power for building interactive CLIs.
-
-2. **Use of Poetry**: Poetry provides dependency management with lockfiles, virtual environment handling, and package building in one tool, simplifying the development workflow.
-
-3. **Modular Architecture**: The codebase is organized into:
-   - `converter.py`: Core conversion logic
-   - `cli.py`: User interface
-   - `utils.py`: Helper functions
-   
-4. **Colorful Interface**: Added color-coded output for better user experience and clarity of information.
-
-5. **Verbose Mode**: Included detailed output option to help users understand the conversion process and troubleshoot complex JSON structures.
-
-## License
-
-MIT
 
 ## Author
 
