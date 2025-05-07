@@ -189,19 +189,19 @@ The test suite focuses on **data‑transformation logic**:
 ### 5.3  Normalized output – six CSV tables
 
 #### root.csv
-| user_id | name | email | age |
+| root_id | name | email | age |
 |---------|------|-------|-----|
 | 1 | John Doe | john@example.com | 30 |
 | 2 | Jane Smith | jane@example.com | 25 |
 
 #### addresses.csv
-| address_id | user_id | street | city | state | zip |
+| address_id | root_id | street | city | state | zip |
 |------------|---------|--------|------|-------|-----|
 | 1 | 1 | 123 Main St | Boston | MA | 02118 |
 | 2 | 2 | 456 Oak Ave | New York | NY | *(null)* |
 
 #### preferences.csv
-| preference_id | user_id | newsletter |
+| preference_id | root_id | newsletter |
 |---------------|---------|------------|
 | 1 | 1 | true |
 | 2 | 2 | false |
@@ -212,7 +212,7 @@ The test suite focuses on **data‑transformation logic**:
 | 1 | 1 | true | false |
 
 #### hobbies.csv
-| hobby_id | user_id | hobby |
+| hobby_id | root_id | hobby |
 |----------|---------|-------|
 | 1 | 1 | reading |
 | 2 | 1 | swimming |
@@ -220,7 +220,7 @@ The test suite focuses on **data‑transformation logic**:
 | 4 | 2 | painting |
 
 #### orders.csv
-| order_id | user_id | total | date |
+| order_id | root_id | total | date |
 |----------|---------|-------|------------|
 | 101 | 1 | 50.00 | 2024‑01‑15 |
 | 102 | 1 | 75.50 | 2024‑02‑01 |
