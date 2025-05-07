@@ -6,12 +6,13 @@ Built with **Click** (for rich interactive prompts) and **pluralizer** (for cons
 It supports the **flattened** approach - the default option from the project instructions that require a single csv output file.
 But it also supports a bonus option - fully **normalized** export for relational databases with multiple csv output files which is optimal.
 
+## Conversion modes
 
-| Mode           | Output             | How nested data are handled                                                                                                                                              |
-| -------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Flattened**  | Single CSV file    | Keys are joined with slashes (`address/street`). Arrays are expanded as indexed columns (`tags/0`, `tags/1`, …).                                                         |
-| **Normalized** | Multiple CSV files | `root.csv` (I could add a part to predict the name of the main entity with heuristics or NLP) plus one table per nested object/array. Each table has a surrogate `{singular}_id` primary key and a foreign‑key column back to another table - let's explain:
-Because we can't suppose anything about relationships between entities in the database, I chose to do nested FKs (indirect), therefore the FKs arent just to root.csv, they point to the immediate parent.
+| Mode           | Output type        | Handling of nested data                                                                                                                                                                                                                                                                                                |
+| -------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Flattened**  | Single CSV file    | Nested keys joined with slashes (`address/street`, `prefs/alerts/email`). Arrays expanded as indexed columns (`tags/0`, `tags/1`, …).                                                                                                                                                                                  |
+| **Normalized** | Multiple CSV files | `root.csv` plus one table per nested object or array. Every generated table gets a surrogate **primary key** named `{singular}_id`, and a **foreign‑key column** that points **to its immediate parent table** (nested/indirect FK). This avoids guessing global relationships and cleanly mirrors the JSON hierarchy. |
+
 
 ### Why we use nested (indirect) foreign keys in the bonus normalized approach:
 
@@ -112,12 +113,13 @@ The test suite focuses on **data‑transformation logic**:
 
 ## 4 · NoSQL → SQL Migration Challenges & Solutions
 
-| Challenge           | Why it’s hard                                   | Flattened approach                                                         | Normalized approach                                                                                                        |
-| ------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Schema Handling** | JSON is schema‑less; keys vary by document.     | Pre‑scan to union all key paths; absent keys → empty CSV cells.            | Tables are generated lazily. First record defines columns; later unseen keys are appended.                                 |
-| **Nested Data**     | SQL tables are flat.                            | Keys collapsed with `/`; arrays expanded as indexed columns because putting whole arrays in a csv table would make it not SQL usable.               | Each object/array becomes its own table. Child tables hold a foreign key to parent (`root_id` or parent `{singular}_id`).  |
-| **Data Types**      | Same key can hold different types.              | Values written as‑is (CSV stores as text). Downstream ETL casts as needed. | Same; CSV preserves text. SQL loaders can coerce.                                                                          |
-| **Array Fields**    | Variable length arrays don’t fit fixed columns. | Indexed columns (`tags/0` …).                                              | Arrays of primitives become `{plural}.csv` with `(id, root_id, value)`. Arrays of objects become tables with full columns. |
+| Challenge           | Why it’s hard                                   | Flattened approach                                                       | Normalized approach                                                                                 |
+| ------------------- | ----------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| **Schema Handling** | JSON is schema‑less; keys vary by document.     | Pre‑scan to union all key paths; absent keys → empty CSV cells.          | Tables are created when first encountered; column headers grow to include any later‑seen fields.    |
+| **Nested Data**     | SQL tables are flat.                            | Keys collapsed with `/`; arrays expanded as indexed columns.             | Each object/array becomes its own table. Child tables carry a foreign key to the parent table.      |
+| **Data Types**      | Same key can hold different types.              | Values written as‑is (CSV stores text). Down‑stream ETL casts as needed. | Same: CSV preserves original text; coercion happens on SQL import.                                  |
+| **Array Fields**    | Variable‑length arrays don’t fit fixed columns. | Indexed columns (`tags/0`, `tags/1`, …).                                 | Arrays of primitives → `{plural}.csv` with `(id, root_id, value)`. Arrays of objects → full tables. |
+
 
 ### Extra Design Decisions
 
