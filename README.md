@@ -31,8 +31,9 @@ Nested FKs mirror the JSON structure, preserve normal‑form integrity, and adap
 
 ```bash
 # clone and enter the repo
-git clone https://github.com/your‑org/json2csv.git
-cd json2csv
+git clone https://github.com/GuniDH/JSON2CSV.git
+cd JSON2CSV
+
 ```
 
 ### 1.1 Poetry (recommended)
