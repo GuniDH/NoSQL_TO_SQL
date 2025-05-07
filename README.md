@@ -12,7 +12,8 @@ But it also supports a bonus option - fully **normalized** export for relational
 | -------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Flattened**  | Single CSV file    | Nested keys joined with slashes (`address/street`, `prefs/alerts/email`). Arrays expanded as indexed columns (`tags/0`, `tags/1`, …).                                                                                                                                                                                  |
 | **Normalized** | Multiple CSV files | `root.csv` plus one table per nested object or array. Every generated table gets a surrogate **primary key** named `{singular}_id`, and a **foreign‑key column** that points **to its immediate parent table** (nested/indirect FK). This avoids guessing global relationships and cleanly mirrors the JSON hierarchy. |
-Note: I could predict the name of the main entity using NLP / heuristics instead of having root.csv but i find it irrelavent for SQL |
+
+#### Note: I could predict the name of the main entity using NLP / heuristics instead of having root.csv but i find it irrelavent for SQL 
 
 
 ### Why we use nested (indirect) foreign keys in the bonus normalized approach:
