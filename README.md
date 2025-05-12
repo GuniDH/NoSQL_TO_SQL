@@ -179,10 +179,11 @@ The test suite focuses on **data‑transformation logic**:
 ```
 ### 5.2  Flattened output (`flattened.csv`)
 
-| id | name | email | age | address/street | address/city | address/state | address/zip | preferences/newsletter | preferences/notifications/email | preferences/notifications/sms | hobbies/0 | hobbies/1 | hobbies/2 | hobbies/3 | orders/0/id | orders/0/total | orders/0/date | orders/1/id | orders/1/total | orders/1/date |
-|----|------|-------|-----|----------------|--------------|---------------|-------------|-----------------------|---------------------------------|-------------------------------|-----------|-----------|-----------|-----------|-------------|----------------|---------------|-------------|----------------|---------------|
-| 1 | John Doe | john@example.com | 30 | 123 Main St | Boston | MA | 02118 | true | true | false | reading | swimming | coding |   | 101 | 50.00 | 2024‑01‑15 | 102 | 75.50 | 2024‑02‑01 |
-| 2 | Jane Smith | jane@example.com | 25 | 456 Oak Ave | New York | NY |   | false |   |   | painting |   |   |   |   |   |   |   |   |   |
+| id | name       | email             | age | address/street | address/city | address/state | address/zip | preferences/newsletter | preferences/notifications/email | preferences/notifications/sms | hobbies/0 | hobbies/1 | hobbies/2 | orders/0/id | orders/0/total | orders/0/date | orders/1/id | orders/1/total | orders/1/date |
+|----|------------|-------------------|-----|----------------|--------------|---------------|-------------|-------------------------|----------------------------------|-------------------------------|-----------|-----------|-----------|-------------|----------------|---------------|-------------|----------------|---------------|
+| 1  | John Doe   | john@example.com  | 30  | 123 Main St    | Boston       | MA            | 02118       | true                    | true                             | false                        | reading   | swimming  | coding    | 101         | 50.00          | 2024‑01‑15    | 102         | 75.50          | 2024‑02‑01    |
+| 2  | Jane Smith | jane@example.com  | 25  | 456 Oak Ave    | New York     | NY            |             | false                   |                                  |                               | painting  |           |           |             |                |               |             |                |               |
+
 
 ---
 
